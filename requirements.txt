@@ -1,0 +1,15 @@
+pytesseract
+pillow
+scikit-learn
+torch
+numpy
+levenshtein
+pandas
+opencv-python
+skimage
+tensorflow
+plotly
+shutil
+gdown
+tqdm
+matplotlib
