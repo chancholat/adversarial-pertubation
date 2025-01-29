@@ -3,9 +3,9 @@ import torch.nn as nn
 import cv2
 import numpy as np
 
-from .models.yolov5.utils.augmentations import letterbox
-from .models.yolov5.utils.general import xyxy2xywhn
-from .models.yolov5.utils.loss import ComputeLoss
+from ._models.yolov5.utils.augmentations import letterbox
+from ._models.yolov5.utils.general import xyxy2xywhn
+from ._models.yolov5.utils.loss import ComputeLoss
 from .base import BaseOCR
 
 def crop_image(image, bbox):
