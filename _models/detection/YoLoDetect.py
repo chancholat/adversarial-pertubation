@@ -98,4 +98,12 @@ class YOLOv5Detector(BaseDetector):
 
         return torch.cat(targets)
 
+    def get_bboxes(self, predictions):
+        bboxes = []
+        for pred in predictions:
+            bbox_list = [box[0:4] for box in pred]
+            bboxes.append(bbox_list)
+        
+
+
 # det_model = YOLOv5Detector()

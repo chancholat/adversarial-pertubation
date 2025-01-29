@@ -47,6 +47,7 @@ class YoloLicensePlateOCR(BaseOCR):
     preprocess_imgs = []
 
     for img, bbox in zip(images, bboxes):
+      bbox = bbox[0] # assume that there only one license plate per image, may be change later
       crop_img = crop_image(img, bbox)
       # Resizes and pads image to new_shape (640 for yolo) with stride-multiple constraints, returns resized image, ratio, padding.
       pad_img, ratio, pad = letterbox(crop_img, 640, auto=False, scaleup=True)
