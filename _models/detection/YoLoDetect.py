@@ -101,7 +101,7 @@ class YOLOv5Detector(BaseDetector):
     def get_bboxes(self, predictions):
         bboxes = []
         for pred in predictions:
-            bbox_list = [box[0:4] for box in pred]
+            bbox_list = [[int(point) for point in box[0:4]] for box in pred]
             bboxes.append(bbox_list)
         
         return bboxes
