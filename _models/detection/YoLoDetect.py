@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import torch
 import torch.nn as nn
-from base import BaseDetector
+from .base import BaseDetector
 from ._models.yolov5.utils.augmentations import letterbox
 from ._models.yolov5.utils.general import xyxy2xywhn
 from ._models.yolov5.utils.loss import ComputeLoss
