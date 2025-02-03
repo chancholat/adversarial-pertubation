@@ -46,6 +46,9 @@ class YoloLicensePlateOCR(BaseOCR):
   def preprocess(self, images, bboxes):
     preprocess_imgs = []
 
+    if not len(bboxes):
+      return images # if there wasn't any detected bbox, return the original images
+
     for img, bbox in zip(images, bboxes):
       bbox = bbox[0] # assume that there only one license plate per image, may be change later
       crop_img = crop_image(img, bbox)

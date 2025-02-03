@@ -104,6 +104,6 @@ class YOLOv5Detector(BaseDetector):
             bbox_list = [[int(point) for point in box[0:4]] for box in pred]
             bboxes.append(bbox_list)
         
-        return bboxes
+        return bboxes   
 
 # det_model = YOLOv5Detector()
