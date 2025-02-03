@@ -127,7 +127,10 @@ class YoloLicensePlateOCR(BaseOCR):
     bboxes = []
     for pred in predictions:
       if len(pred) == 0:
-          return "unknown", pred
+          # return "unknown", pred
+          lps.append("unknow")
+          bboxes.append(pred)
+          continue
       center_list = []
       y_mean = 0
       y_sum = 0
