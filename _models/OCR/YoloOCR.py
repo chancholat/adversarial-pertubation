@@ -49,7 +49,8 @@ class YoloLicensePlateOCR(BaseOCR):
 
     for img, bbox in zip(images, bboxes):
       if not len(bbox):
-        preprocess_imgs.append(img) # if there wasn't any detected bbox, then use the whole image as input 
+        preprocess_imgs.append(img) # if there wasn't any detected bbox, then use the whole image as input
+        continue 
       bbox = bbox[0] # assume that there only one license plate per image, may be change later
       crop_img = crop_image(img, bbox)
       # Resizes and pads image to new_shape (640 for yolo) with stride-multiple constraints, returns resized image, ratio, padding.
