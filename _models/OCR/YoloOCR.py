@@ -65,8 +65,8 @@ class YoloLicensePlateOCR(BaseOCR):
     return preprocess_imgs
   
   def postprocess(self, adv_images):
-    adv_images = adv_images.detach().cpu().numpy().transpose(1,2,0) * 255.0
-    adv_images = cv2.cvtColor(adv_images, cv2.COLOR_RGB2BGR)
+    adv_images = [adv_image.detach().cpu().numpy().transpose(1,2,0) * 255.0 for adv_image in adv_images]
+    adv_images = [cv2.cvtColor(adv_image, cv2.COLOR_RGB2BGR) for adv_image in adv_images]
     return adv_images
 
   def forward(self, adv_images, targets):
