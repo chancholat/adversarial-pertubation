@@ -10,3 +10,5 @@ opencv-python
 plotly
 tqdm
 matplotlib
+torchvision
+PyYAML
