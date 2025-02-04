@@ -6,67 +6,62 @@ import argparse
 import os
 import sys
 
-from models.detection.YoLoDetect import YoloDetection
-from models.OCR.easyOCR import EasyOCR
-from models.OCR.YoloOCR import YoloLicensePlateOCR
-from models.detection.InceptionResnet import InceptionResnet
+sys.path.append("../")
+
+import cv2
+from _models.detection.YoLoDetect import YOLOv5Detector
+from _models.OCR.YoloOCR import YoloLicensePlateOCR
+# from _models.OCR.easyOCR import EasyOCR
+# from _models.detection.InceptionResnet import InceptionResnet
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Evaluate OCR and Detection Models")
     parser.add_argument("--detection_model", type=str, required=False, default="yolo", help="Path to the detection model")
-    parser.add_argument("--ocr_model", type=str, required=False, default="easyocr", help="Path to the OCR model")
-    parser.add_argument("--images", type=str, required=True, help="Path to the folder containing test images")
-    parser.add_argument("--ground_truth_detection_path", type=str, required=True, help="Path to ground truth detection annotations")
-    parser.add_argument("--ground_truth_ocr_path", type=str, required=True, help="Path to ground truth OCR annotations")
+    parser.add_argument("--ocr_model", type=str, required=False, default="yolo", help="Path to the OCR model")
+    parser.add_argument("--origin_images_path", type=str, required=True, help="Path to the folder containing test images")
+    parser.add_argument("--adv_images_path", type=str, required=True, help="Path to the folder containing adversarial images")
+    parser.add_argument("--batch_size", type=int, required=False, default=1, help="Batch size")
     return parser.parse_args()
 
 class Evaluate:
-    def __init__(self, model_detection, model_ocr, images_path, ground_truth_detection_path, ground_truth_ocr_path):
+    def __init__(self, model_detection, model_ocr, origin_images_path, adv_images_path, batch_size):
         self.model_detection = model_detection
         self.model_ocr = model_ocr
-        self.images_path = images_path
-        self.ground_truth_detection_path = ground_truth_detection_path
-        self.ground_truth_ocr_path = ground_truth_ocr_path
-        self.ground_truth_detection = None
-        self.ground_truth_ocr = None
+        self.origin_images_path = origin_images_path
+        self.adv_images_path = adv_images_path
+        self.batch_size = batch_size
+        self.origin_images = None
+        self.adv_images = None
+        self.detection_result_before_deid = None
+        self.detection_result_after_attack = None
+        self.ocr_result_before_deid = None
+        self.ocr_result_after_attack = None
 
     def load_images(self):
         """Load images from folder"""
-        # input: self.images_path
-        # output: list of image paths
-        # example: ["path/to/image1.jpg", "path/to/image2.jpg", ...]
 
-        dir = os.listdir(self.images_path)
-        if len(dir) > 0:
-            return [os.path.join(self.images_path, file) for file in dir]
+        origin_dir = os.listdir(self.origin_images_path)
+        adv_dir = os.listdir(self.adv_images_path)
+
+        self.cv2_images = []
+        self.adv_images = []
+
+        if len(origin_dir) > 0:
+            self.origin_images = [cv2.imread(os.path.join(self.origin_images_path, file)) for file in origin_dir]
         else:
-            print("No images found in the folder. Exiting...")
+            print("No images found in the origin folder. Exiting...")
             sys.exit(1)
 
-    def load_ground_truth_detection(self):
-        """Load ground truth detection annotations from txt or csv file"""
-        # input: self.ground_truth_detection_path
-        # output: list of ground truth detection annotations
-        # example: [(x1, y1, x2, y2), (x1, y1, x2, y2), ...]
-        return []
-    
-    def load_ground_truth_ocr(self):
-        """Load ground truth OCR annotations from txt or csv file"""
-        # input: self.ground_truth_ocr_path
-        # output: list of ground truth OCR annotations
-        # example: ["ABCD-1", "CDE-G2", ...]
-        return []
-    
-    def load_images_and_ground_truth(self):
-        """Load ground truth annotations"""
-        self.images = self.load_images()
-        self.ground_truth_detection = self.load_ground_truth_detection()
-        self.ground_truth_ocr = self.load_ground_truth_ocr()
+        if len(adv_dir) > 0:
+            self.adv_images = [cv2.imread(os.path.join(self.adv_images_path, file)) for file in adv_dir]
+        else:
+            print("No images found in the adv folder. Exiting...")
+            sys.exit(1)
 
     def IoU(self, truth_bbox, pred_bbox):
         """Calculate Intersection over Union (IoU)"""
-        x1_true, x2_true, y1_true, y2_true = truth_bbox
-        x1_pred, x2_pred, y1_pred, y2_pred = pred_bbox
+        x1_true, y1_true, x2_true, y2_true = truth_bbox
+        x1_pred, y1_pred, x2_pred, y2_pred = pred_bbox
 
         xA = max(x1_true, x1_pred)
         yA = max(y1_true, y1_pred)
@@ -103,42 +98,64 @@ class Evaluate:
         cer = edit_operations / len(ground_truth) if len(ground_truth) > 0 else 0
         return cer
 
+    def inference_before_attack(self, batch_origin_images):
+        """Inference detection and OCR models before attack"""
+        images = self.model_detection.preprocess(batch_origin_images)
+        det_predictions = self.model_detection.detect(images)
+        bboxes = self.model_detection.get_bboxes(det_predictions)
+
+        crop_images = self.model_ocr.preprocess(images, bboxes)
+        rec_predictions = self.model_ocr.detect(crop_images)
+        lps, _ = self.model_ocr.get_plates_and_bboxes(rec_predictions)
+
+        return bboxes, lps
+    
+    def inference_after_attack(self, batch_adv_images):
+        """Inference detection and OCR models after attack"""
+        adv_imgs = self.model_detection.preprocess(batch_adv_images)
+        det_predictions = self.model_detection.detect(adv_imgs)
+        bboxes = self.model_detection.get_bboxes(det_predictions)
+
+        rec_predictions = self.model_ocr.detect(adv_imgs)
+        lps, _ = self.model_ocr.get_plates_and_bboxes(rec_predictions)
+    
+        return bboxes, lps
+    
     def run_and_eval(self):
         """Run evaluation pipeline and print results"""
-        # New csv file and add header to result dataframe
         result_df = pd.DataFrame(columns=["IoU", "Similarity Metric", "Character Error Rate (CER)"])
+        self.load_images()
 
-        # Get prediction from detection model
-        for image, ground_truth_bbox, ground_truth_text in zip(
-            self.images, 
-            self.ground_truth_detection, 
-            self.ground_truth_ocr
-        ):
-            
-            pred_bbox = self.model_detection.predict(image)
+        for i in range(0, len(self.origin_images), self.batch_size):
+            batch_origin_images = self.origin_images[i:i+self.batch_size]
+            batch_adv_images = self.adv_images[i:i+self.batch_size]
 
-            # Get OCR result
-            cropped_image = image[ground_truth_bbox[1]:ground_truth_bbox[3], ground_truth_bbox[0]:ground_truth_bbox[2]]
-            pred_text = self.model_ocr.predict(cropped_image)
+            self.detection_result_before_deid, self.ocr_result_before_deid = self.inference_before_attack(batch_origin_images)
+            self.detection_result_after_attack, self.ocr_result_after_attack = self.inference_after_attack(batch_adv_images)
 
-            # Calculate metrics
-            iou = self.IoU(ground_truth_bbox, pred_bbox)
-            similarity = self.similarity_metric(ground_truth_text, pred_text)
-            cer = self.cer_metric(ground_truth_text, pred_text)
+            for (ground_truth_bbox, ground_truth_text, pred_bbox, pred_text) in zip(
+                self.detection_result_before_deid, 
+                self.ocr_result_before_deid, 
+                self.detection_result_after_attack, 
+                self.ocr_result_after_attack):
+                
+                iou = self.IoU(ground_truth_bbox[0], pred_bbox[0])
+                similarity = self.similarity_metric(ground_truth_text, pred_text)
+                cer = self.cer_metric(ground_truth_text, pred_text)
 
-            # Add results to dataframe
-            result_df = result_df.append({"IoU": iou, "Similarity Metric": similarity, "Character Error Rate (CER)": cer}, ignore_index=True)
-
-        # Save results to csv
+                result_df = result_df._append({"IoU": iou, "Similarity Metric": similarity, "Character Error Rate (CER)": cer}, ignore_index=True)
         result_df.to_csv("evaluation_results.csv", index=False)
+
 
     def forward(self, ground_truth_detection, ground_truth_ocr, pred_detection, pred_ocr):
         """Run evaluation pipeline and print results"""
         ious, similarities, cers = [], [], []
+
         for (ground_truth_bbox, ground_truth_text, pred_bbox, pred_text) in zip(ground_truth_detection, ground_truth_ocr, pred_detection, pred_ocr):
             iou = self.IoU(ground_truth_bbox, pred_bbox)
             similarity = self.similarity_metric(ground_truth_text, pred_text)
             cer = self.cer_metric(ground_truth_text, pred_text)
+
             ious.append(iou)
             similarities.append(similarity)
             cers.append(cer)
@@ -160,7 +177,7 @@ if __name__ == "__main__":
     if args.detection_model == "inception":
         model_detection = InceptionResnet()
     elif args.detection_model == "yolo":
-        model_detection = YoloDetection()
+        model_detection = YOLOv5Detector()
     
     if args.ocr_model == "yolo":
         model_ocr = YoloLicensePlateOCR()
@@ -171,9 +188,9 @@ if __name__ == "__main__":
     evaluator = Evaluate(
         model_detection=model_detection,
         model_ocr=model_ocr,
-        images_path=args.images,
-        ground_truth_detection_path=args.ground_truth_detection_path,
-        ground_truth_ocr_path=args.ground_truth_ocr_path
+        origin_images_path=args.origin_images_path,
+        adv_images_path=args.adv_images_path,
+        batch_size=args.batch_size  
     )
 
     # Run evaluation

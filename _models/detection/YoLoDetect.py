@@ -8,7 +8,7 @@ from ._models.yolov5.utils.general import xyxy2xywhn
 from ._models.yolov5.utils.loss import ComputeLoss
 
 def loadDetectModel():
-    det_model = torch.hub.load('_models/detection/_models/yolov5', 'custom', path='./assets/pretrained/License-Plate-Recognition/model/LP_detector.pt', force_reload=True, source='local')
+    det_model = torch.hub.load('../_models/detection/_models/yolov5', 'custom', path='../assets/pretrained/License-Plate-Recognition/model/LP_detector.pt', force_reload=True, source='local')
 
     for param in det_model.model.model.parameters():
         param.requires_grad = False
