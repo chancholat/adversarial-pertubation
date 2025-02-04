@@ -2,14 +2,26 @@ import cv2
 import numpy as np
 import torch
 import torch.nn as nn
+import os
+
 from .base import BaseDetector
 from ._models.yolov5.utils.augmentations import letterbox
 from ._models.yolov5.utils.general import xyxy2xywhn
 from ._models.yolov5.utils.loss import ComputeLoss
 
 def loadDetectModel():
-    det_model = torch.hub.load('_models/detection/_models/yolov5', 'custom', path='./assets/pretrained/License-Plate-Recognition/model/LP_detector.pt', force_reload=True, source='local')
-
+    # Get the absolute path of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Navigate two levels up to reach the root directory
+    root_dir = os.path.dirname(os.path.dirname(script_dir))
+    
+    # Construct the model path relative to the discovered root
+    model_path = os.path.join(root_dir, 'assets', 'pretrained', 'License-Plate-Recognition', 'model', 'LP_detector.pt')
+    det_model = torch.hub.load(os.path.join(root_dir, '_models', 'detection', '_models', 'yolov5'), 
+                                 'custom', path=model_path, 
+                                 force_reload=True, source='local')
+    
     for param in det_model.model.model.parameters():
         param.requires_grad = False
     
