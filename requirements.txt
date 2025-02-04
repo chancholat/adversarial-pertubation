@@ -1,3 +1,4 @@
+torch
 pytesseract
 pillow
 scikit-learn
@@ -6,10 +7,6 @@ numpy
 levenshtein
 pandas
 opencv-python
-skimage
-tensorflow
 plotly
-shutil
-gdown
 tqdm
 matplotlib
