@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import cv2
 import numpy as np
+import os
 
 from ._models.yolov5.utils.augmentations import letterbox
 from ._models.yolov5.utils.general import xyxy2xywhn
@@ -28,10 +29,23 @@ def check_point_linear(x, y, x1, y1, x2, y2):
     return(math.isclose(y_pred, y, abs_tol = 3)), y_pred - y
 
 def yoloLPOCR():
-  yolo_LP_OCR = torch.hub.load('../_models/OCR/_models/yolov5', 'custom', path='../assets/pretrained/License-Plate-Recognition/model/LP_ocr.pt', force_reload=True, source='local')
-  for param in yolo_LP_OCR.model.model.parameters():
-    param.requires_grad = False
-  return yolo_LP_OCR
+    # Get the absolute path of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Navigate two levels up to reach the root directory
+    root_dir = os.path.dirname(os.path.dirname(script_dir))
+    
+    # Construct the model path relative to the discovered root
+    model_path = os.path.join(root_dir, 'assets', 'pretrained', 'License-Plate-Recognition', 'model', 'LP_ocr.pt')
+    yolo_LP_OCR = torch.hub.load(os.path.join(root_dir, '_models', 'OCR', '_models', 'yolov5'), 
+                                 'custom', path=model_path, 
+                                 force_reload=True, source='local')
+    
+    for param in yolo_LP_OCR.model.model.parameters():
+        param.requires_grad = False
+    
+    return yolo_LP_OCR
+
 
 class YoloLicensePlateOCR(BaseOCR):
   def __init__(self):
