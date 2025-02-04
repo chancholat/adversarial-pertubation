@@ -1,7 +1,7 @@
 import torch
 from torchvision.transforms import functional as TFF
 
-from attack.algorithms import get_optim
+from attack.algorithms import get_optim 
 
 
 def generate_tensors(query):
@@ -30,11 +30,13 @@ class Attacker:
         max_iter: maximum number of iterations
         eps: epsilon param
     """
-    def __init__(self, optim, max_iter=10, eps=8/255.):
+    def __init__(self, optim, max_iter=10, eps=8/255, eps1=8/255, eps2=8/255):
         self.max_iter = max_iter
         self.eps = eps
+        self.eps1 = eps1
+        self.eps2 = eps2
         self.optim = optim
-    
+
     def _generate_tensors(self, query):
         """
         Generate tensors to allow computing gradients
@@ -59,7 +61,7 @@ class Attacker:
         :params:
             images: list of cv2 image
             victim: victim detection model
-        :return: 
+        :return:
             targets: targets for image
         """
         raise NotImplementedError("This is an interface method")
@@ -74,7 +76,7 @@ class Attacker:
             optim: optimizer
             max_iter: number of attack iterations
             mask: gradient mask
-        :return: 
+        :return:
             results: tensor image with updated gradients
         """
 
@@ -100,20 +102,20 @@ class Attacker:
             victim: victim detection model
             targets: targets for image
             optim_params: keyword arguments that will be passed to optim
-        :return: 
+        :return:
             adv_res: adversarial cv2 image
         """
         # Generate target
         if targets is None:
             targets = self._generate_targets(victim, query_images)
-        
+
         # Generate adverasarial
         adv_imgs = self._generate_adv(query_images)
-        adv_norm = victim.preprocess(adv_imgs) 
+        adv_norm = victim.preprocess(adv_imgs)
 
         # To tensor, allow gradients to be saved
         adv_tensors = self._generate_tensors(adv_norm)
-        
+
         # Get attack algorithm
         optim = get_optim(self.optim, params=[adv_tensors], epsilon=self.eps, **optim_params)
 
