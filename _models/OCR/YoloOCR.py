@@ -125,6 +125,7 @@ class YoloLicensePlateOCR(BaseOCR):
   def get_plates_and_bboxes(self, predictions):
     lps = []
     bboxes = []
+    LP_type = "1"
     for pred in predictions:
       if len(pred) == 0:
           # return "unknown", pred
