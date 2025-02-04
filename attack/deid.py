@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
 
+# Tested the original code.
+
 class DeID:
     """
     Base class for deid function
@@ -8,13 +10,16 @@ class DeID:
     def __init__(self) -> None:
         pass
 
-    def forward_batch(self, images, face_boxes):
+    def forward_batch(self, images, bboxes):
         """
         Forward batch of images
         """
         deid_images = []
-        for (image, face_box) in zip(images, face_boxes):
-            deid_images.append(self(image, face_box))
+        for (image, bbox) in zip(images, bboxes):
+          if len(bbox):
+            deid_images.append(self(image, bbox[0])) # assume there only one bbox per image
+          else:
+            deid_images.append(image)
         return deid_images
 
 class Pixelate(DeID):
@@ -27,15 +32,15 @@ class Pixelate(DeID):
         super().__init__()
         self.blocks = blocks
 
-    def __call__(self, image, face_box):
+    def __call__(self, image, bbox):
         """
         :params:
             image: cv2 image
-            face_box: bounding box of face. In (x1,y1,x2,y2) format
+            bbox: bounding box of face. In (x1,y1,x2,y2) format
         """
-        x1,y1,x2,y2 = face_box
+        x1,y1,x2,y2 = bbox
         crop = image[y1:y2, x1:x2, :]
-        
+
         # divide the input image into NxN blocks
         (h, w) = crop.shape[:2]
         xSteps = np.linspace(0, w, self.blocks + 1, dtype="int")
@@ -57,7 +62,7 @@ class Pixelate(DeID):
                 (B, G, R) = [int(x) for x in cv2.mean(roi)[:3]]
                 cv2.rectangle(crop, (startX, startY), (endX, endY),
                 (B, G, R), -1)
-        
+
         image[y1:y2, x1:x2, :] = crop.copy()
 
         # return the pixelated blurred image
@@ -73,13 +78,13 @@ class Blur(DeID):
         super().__init__()
         self.kernel_size = (kernel_size, kernel_size)
 
-    def __call__(self, image, face_box):
+    def __call__(self, image, bbox):
         """
         :params:
             image: cv2 image
-            face_box: bounding box of face. In (x1,y1,x2,y2) format
+            bbox: bounding box of face. In (x1,y1,x2,y2) format
         """
-        x1,y1,x2,y2 = face_box
+        x1,y1,x2,y2 = bbox
         crop = image[y1:y2, x1:x2, :]
         crop = cv2.blur(crop, self.kernel_size)
         image[y1:y2, x1:x2, :] = crop.copy()
