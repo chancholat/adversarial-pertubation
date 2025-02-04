@@ -84,7 +84,7 @@ class YOLOv5Detector(BaseDetector):
             pred = np.array([[item[5], item[0], item[1], item[2], item[3]] for item in pred])
             
             if len(pred) == 0:
-                pred = np.zeros((0, 6))
+                pred = np.zeros((0, 5))
                 
             nl = len(pred)
             target = torch.zeros((nl, 6))
