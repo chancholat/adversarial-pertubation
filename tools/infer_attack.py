@@ -67,8 +67,8 @@ class InferAttack:
         det_predictions = self.detection_model.detect(images)
         bboxes = self.detection_model.get_bboxes(det_predictions)
         
-        adv_imgs = self.deid_fn.forward_batch(images, bboxes)
-        return adv_imgs
+        deid_imgs = self.deid_fn.forward_batch(images, bboxes)
+        return deid_imgs
 
     def attack(self):
         self.cv2_images = self.load_images()
