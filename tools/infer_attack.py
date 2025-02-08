@@ -4,9 +4,7 @@ import sys
 sys.path.append("../")
 
 from _models.detection.YoLoDetect import YOLOv5Detector
-# from _models.OCR.easyOCR import EasyOCR
 from _models.OCR.YoloOCR import YoloLicensePlateOCR
-# from _models.detection.InceptionResnet import InceptionResnet
 
 from attack.attacker.full_attacker import FullAttacker
 from attack.deid import Blur
@@ -44,6 +42,7 @@ class InferAttack:
         self.eps2 = eps2
         self.blur = blur
         self.cv2_images = None
+        self.filename_images = None
         self.deid_fn = Blur(blur)
         self.attacker = None
         self.batch_size = batch_size
@@ -51,12 +50,14 @@ class InferAttack:
     def load_images(self):
         """Load images from folder"""
         cv2_images = []
+        filename_images = []
         dir = os.listdir(self.images_path)
         if len(dir) > 0:
             for file in dir:
                 img = cv2.imread(os.path.join(self.images_path, file))
                 cv2_images.append(img)
-            return cv2_images
+                filename_images.append(file.split(".")[0])
+            return cv2_images, filename_images
         else:
             print("No images found in the folder. Exiting...")
             sys.exit(1)
@@ -71,7 +72,7 @@ class InferAttack:
         return deid_imgs
 
     def attack(self):
-        self.cv2_images = self.load_images()
+        self.cv2_images, self.filename_images = self.load_images()
         self.attacker = FullAttacker(
             self.optim, 
             self.max_iter, 
@@ -82,6 +83,7 @@ class InferAttack:
         # get batch_images from self.cv2_images with batch_size = self.batch_size
         for i in range(0, len(self.cv2_images), self.batch_size):
             batch_images = self.cv2_images[i:i+self.batch_size]
+            batch_filenames = self.filename_images[i:i+self.batch_size]  # Lấy tên ảnh tương ứng
             deid_images = self.deid(batch_images)
 
             adv_imgs = self.attacker.attack(
@@ -93,23 +95,19 @@ class InferAttack:
                 deid_images=deid_images
             )
             # save adv_imgs using cv2
-            for j, adv_img in enumerate(adv_imgs):
-                cv2.imwrite(self.adv_images_path + f"/adv_img_{i}_{j}.jpg", adv_img)
-
+            for adv_img, filename in zip(adv_imgs, batch_filenames):
+                adv_img_path = os.path.join(self.adv_images_path, filename)  # Đường dẫn đầy đủ
+                cv2.imwrite(adv_img_path, adv_img)
 
 if __name__ == "__main__":
     args = parse_arguments()
 
     
-    if args.detection_model == "inception":
-        model_detection = InceptionResnet()
-    elif args.detection_model == "yolo":
+    if args.detection_model == "yolo":
         model_detection = YOLOv5Detector()
     
     if args.ocr_model == "yolo":
         model_ocr = YoloLicensePlateOCR()
-    elif args.ocr_model == "easyocr":
-        model_ocr = EasyOCR()
 
 
     infer_attack = InferAttack(

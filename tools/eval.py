@@ -36,12 +36,17 @@ class Evaluate:
         self.detection_result_after_attack = None
         self.ocr_result_before_deid = None
         self.ocr_result_after_attack = None
+        self.filename_images = None
 
     def load_images(self):
         """Load images from folder"""
 
         origin_dir = os.listdir(self.origin_images_path)
         adv_dir = os.listdir(self.adv_images_path)
+        self.filename_images = []
+
+        for file in origin_dir:
+            self.filename_images.append(file)
 
         self.cv2_images = []
         self.adv_images = []
@@ -123,28 +128,36 @@ class Evaluate:
     
     def run_and_eval(self):
         """Run evaluation pipeline and print results"""
-        result_df = pd.DataFrame(columns=["IoU", "Similarity Metric", "Character Error Rate (CER)"])
+        result_df = pd.DataFrame(columns=["filename", "IoU", "Similarity Metric", "Character Error Rate (CER)"])
         self.load_images()
 
         for i in range(0, len(self.origin_images), self.batch_size):
             batch_origin_images = self.origin_images[i:i+self.batch_size]
             batch_adv_images = self.adv_images[i:i+self.batch_size]
+            batch_filenames = self.filename_images[i:i+self.batch_size]
 
-            self.detection_result_before_deid, self.ocr_result_before_deid = self.inference_before_attack(batch_origin_images)
-            self.detection_result_after_attack, self.ocr_result_after_attack = self.inference_after_attack(batch_adv_images)
+            batch_detection_result_before_deid, batch_ocr_result_before_deid = self.inference_before_attack(batch_origin_images)
+            batch_detection_result_after_attack, batch_ocr_result_after_attack = self.inference_after_attack(batch_adv_images)
 
-            for (ground_truth_bbox, ground_truth_text, pred_bbox, pred_text) in zip(
-                self.detection_result_before_deid, 
-                self.ocr_result_before_deid, 
-                self.detection_result_after_attack, 
-                self.ocr_result_after_attack):
+            for (ground_truth_bbox, ground_truth_text, pred_bbox, pred_text, filename) in zip(
+                batch_detection_result_before_deid, 
+                batch_ocr_result_before_deid, 
+                batch_detection_result_after_attack, 
+                batch_ocr_result_after_attack,
+                batch_filenames):
                 
                 iou = self.IoU(ground_truth_bbox[0], pred_bbox[0])
                 similarity = self.similarity_metric(ground_truth_text, pred_text)
                 cer = self.cer_metric(ground_truth_text, pred_text)
 
-                result_df = result_df._append({"IoU": iou, "Similarity Metric": similarity, "Character Error Rate (CER)": cer}, ignore_index=True)
-        result_df.to_csv("evaluation_results.csv", index=False)
+                result_df = result_df._append({
+                    "filename": filename,
+                    "IoU": iou, 
+                    "Similarity Metric": similarity, 
+                    "Character Error Rate (CER)": cer
+                    }, ignore_index=True)
+                
+        result_df.to_csv("../result/evaluation_results.csv", index=False)
 
 
     def forward(self, ground_truth_detection, ground_truth_ocr, pred_detection, pred_ocr):
@@ -174,15 +187,11 @@ class Evaluate:
 if __name__ == "__main__":
     args = parse_arguments()
 
-    if args.detection_model == "inception":
-        model_detection = InceptionResnet()
-    elif args.detection_model == "yolo":
+    if args.detection_model == "yolo":
         model_detection = YOLOv5Detector()
     
     if args.ocr_model == "yolo":
         model_ocr = YoloLicensePlateOCR()
-    elif args.ocr_model == "easyocr":
-        model_ocr = EasyOCR()
 
     # Initialize evaluator
     evaluator = Evaluate(
