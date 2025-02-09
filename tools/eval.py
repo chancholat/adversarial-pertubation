@@ -10,8 +10,9 @@ sys.path.append("../")
 
 import cv2
 from _models.detection.YoLoDetect import YOLOv5Detector
+from _models.detection.MTCNNDetect import MTCNNDetector
 from _models.OCR.YoloOCR import YoloLicensePlateOCR
-# from _models.OCR.easyOCR import EasyOCR
+from _models.OCR.easyOCR import EasyOCR
 # from _models.detection.InceptionResnet import InceptionResnet
 
 def parse_arguments():
@@ -174,8 +175,8 @@ class Evaluate:
 if __name__ == "__main__":
     args = parse_arguments()
 
-    if args.detection_model == "inception":
-        model_detection = InceptionResnet()
+    if args.detection_model == "mtcnn":
+        model_detection = MTCNNDetector()
     elif args.detection_model == "yolo":
         model_detection = YOLOv5Detector()
     
